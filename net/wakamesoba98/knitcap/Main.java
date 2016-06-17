@@ -8,7 +8,7 @@ public class Main {
     public static void main(String[] args) {
         Capture capture = new Capture();
         try {
-            capture.capture(5, 10, 65536, "tcp");
+            capture.capture(20, 10, 65536);
         } catch (PcapNativeException | NotOpenException e) {
             e.printStackTrace();
         }
