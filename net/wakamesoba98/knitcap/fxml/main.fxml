@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<VBox prefHeight="600.0" prefWidth="900.0" xmlns="http://javafx.com/javafx/8.0.92"
+      xmlns:fx="http://javafx.com/fxml/1" fx:controller="net.wakamesoba98.knitcap.view.Controller">
+  <MenuBar VBox.vgrow="NEVER">
+    <Menu mnemonicParsing="false" text="File">
+      <MenuItem mnemonicParsing="false" text="New"/>
+      <MenuItem mnemonicParsing="false" text="Open…"/>
+      <Menu mnemonicParsing="false" text="Open Recent"/>
+      <SeparatorMenuItem mnemonicParsing="false"/>
+      <MenuItem mnemonicParsing="false" text="Preferences…"/>
+      <SeparatorMenuItem mnemonicParsing="false"/>
+      <MenuItem mnemonicParsing="false" text="Quit"/>
+    </Menu>
+    <Menu mnemonicParsing="false" text="Capture">
+      <MenuItem mnemonicParsing="false" text="Start" fx:id="menuStart"/>
+    </Menu>
+    <Menu mnemonicParsing="false" text="Help">
+      <MenuItem mnemonicParsing="false" text="About Knitcap"/>
+    </Menu>
+  </MenuBar>
+  <SplitPane focusTraversable="true" prefHeight="-1.0" prefWidth="-1.0" VBox.vgrow="ALWAYS">
+    <AnchorPane>
+      <ListView fx:id="listView" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0"
+                AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0"/>
+    </AnchorPane>
+  </SplitPane>
+</VBox>

@@ -1,4 +1,4 @@
-package net.wakamesoba98.knitcap.packet;
+package net.wakamesoba98.knitcap.capture.packet;
 
 import org.pcap4j.packet.Packet;
 
