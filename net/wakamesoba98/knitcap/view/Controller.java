@@ -8,6 +8,8 @@ import javafx.fxml.Initializable;
 import javafx.scene.control.ListView;
 import javafx.scene.control.MenuItem;
 import net.wakamesoba98.knitcap.capture.Capture;
+import net.wakamesoba98.knitcap.capture.packet.PacketHeader;
+import net.wakamesoba98.knitcap.view.listview.PacketListCell;
 import org.pcap4j.core.NotOpenException;
 import org.pcap4j.core.PcapNativeException;
 
@@ -17,29 +19,42 @@ import java.util.ResourceBundle;
 public class Controller implements Initializable, ListViewControllable {
 
     @FXML
-    private ListView<String> listView;
+    private ListView<PacketHeader> listView;
     @FXML
-    private MenuItem menuStart;
+    private MenuItem menuStart, menuStop;
 
-    private ListProperty<String> listProperty = new SimpleListProperty<>();
+    private Capture capture;
+    private ListProperty<PacketHeader> listProperty = new SimpleListProperty<>();
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         listProperty.set(FXCollections.observableArrayList());
+        listView.setCellFactory(param -> new PacketListCell());
         listView.itemsProperty().bind(listProperty);
 
+        capture = new Capture();
+
         menuStart.setOnAction(actionEvent -> {
-            Capture capture = new Capture();
+            listProperty.clear();
             try {
-                capture.capture(20, 10, 65536, Controller.this);
+                capture.capture(-1, 10, 65536, Controller.this);
             } catch (PcapNativeException | NotOpenException e) {
                 e.printStackTrace();
             }
         });
+
+        menuStop.setOnAction(actionEvent -> capture.destroy());
     }
 
     @Override
-    public void addItem(String item) {
+    public void addItem(PacketHeader item) {
         listProperty.add(0, item);
+        if (listProperty.size() > 1000) {
+            listProperty.remove(1000);
+        }
+    }
+
+    public void destroy() {
+        capture.destroy();
     }
 }
