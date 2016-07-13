@@ -1,36 +1,38 @@
 package net.wakamesoba98.knitcap.capture.packet;
 
-import net.wakamesoba98.knitcap.capture.IfaceAddress;
+import net.wakamesoba98.knitcap.capture.NetworkDevice;
 import org.pcap4j.packet.*;
 
 public class PacketHeader {
 
-    private IfaceAddress ifaceAddress;
-    private String srcAddr, dstAddr;
     private PayloadProtocol protocol;
+    private PacketType packetType;
+    private String srcIpAddress, dstIpAddress;
+    private String srcHardwareAddress, dstHardwareAddress;
     private String otherProtocol;
     private int srcPort, dstPort;
+    private boolean isSameSubnet;
     private boolean isIpV6;
 
-    public PacketHeader(Packet packet, IfaceAddress ifaceAddress) {
-        this.ifaceAddress = ifaceAddress;
-
+    public PacketHeader(Packet packet, NetworkDevice networkDevice) {
         Packet.Header ipHeader = packet.getPayload().getHeader();
         if (ipHeader instanceof IpV4Packet.IpV4Header) {
             IpV4Packet.IpV4Header ipV4Header = (IpV4Packet.IpV4Header) ipHeader;
-            srcAddr = ipV4Header.getSrcAddr().getHostAddress();
-            dstAddr = ipV4Header.getDstAddr().getHostAddress();
+            srcIpAddress = ipV4Header.getSrcAddr().getHostAddress();
+            dstIpAddress = ipV4Header.getDstAddr().getHostAddress();
             isIpV6 = false;
         } else if (ipHeader instanceof IpV6Packet.IpV6Header) {
             IpV6Packet.IpV6Header ipV6Header = (IpV6Packet.IpV6Header) ipHeader;
-            srcAddr = ipV6Header.getSrcAddr().getHostAddress();
-            dstAddr = ipV6Header.getDstAddr().getHostAddress();
+            srcIpAddress = ipV6Header.getSrcAddr().getHostAddress();
+            dstIpAddress = ipV6Header.getDstAddr().getHostAddress();
             isIpV6 = true;
         } else if (ipHeader instanceof ArpPacket.ArpHeader) {
             protocol = PayloadProtocol.ARP;
             ArpPacket.ArpHeader arpHeader = (ArpPacket.ArpHeader) ipHeader;
-            srcAddr = arpHeader.getSrcProtocolAddr().getHostAddress();
-            dstAddr = arpHeader.getDstProtocolAddr().getHostAddress();
+            srcIpAddress = arpHeader.getSrcProtocolAddr().getHostAddress();
+            dstIpAddress = arpHeader.getDstProtocolAddr().getHostAddress();
+            srcHardwareAddress = arpHeader.getSrcHardwareAddr().toString();
+            dstHardwareAddress = arpHeader.getDstHardwareAddr().toString();
             isIpV6 = false;
         }
 
@@ -73,22 +75,62 @@ public class PacketHeader {
                 }
             }
         }
+
+        String ipV4Address = networkDevice.getIpV4Address();
+        String ipV6Address = networkDevice.getIpV6Address();
+        if (srcIpAddress.equals(ipV4Address) || srcIpAddress.equals(ipV6Address)) {
+            packetType = PacketType.SEND;
+        } else if (dstIpAddress.equals(ipV4Address) || dstIpAddress.equals(ipV6Address)) {
+            packetType = PacketType.RECEIVE;
+        } else {
+            packetType = PacketType.OTHER;
+        }
+
+        if (!isIpV6) {
+            isSameSubnet = isSameSubnetV4(srcIpAddress, dstIpAddress, networkDevice.getIpV4SubnetMask());
+        }
     }
 
-    public IfaceAddress getIfaceAddress() {
-        return ifaceAddress;
+    private boolean isSameSubnetV4(String srcAddress, String dstAddress, String mask) {
+        long srcValue = convertLong(srcAddress);
+        long dstValue = convertLong(dstAddress);
+        long maskValue = convertLong(mask);
+        return (srcValue & maskValue) == (dstValue & maskValue);
     }
 
-    public String getSrcAddr() {
-        return srcAddr;
-    }
-
-    public String getDstAddr() {
-        return dstAddr;
+    private long convertLong(String address) {
+        String[] octet = address.split("\\.");
+        long result = 0;
+        for (int i = 0; i < 4; i++) {
+            int n = Integer.valueOf(octet[i]);
+            result = result << 8;
+            result += n;
+        }
+        return result;
     }
 
     public PayloadProtocol getProtocol() {
         return protocol;
+    }
+
+    public PacketType getPacketType() {
+        return packetType;
+    }
+
+    public String getSrcIpAddress() {
+        return srcIpAddress;
+    }
+
+    public String getDstIpAddress() {
+        return dstIpAddress;
+    }
+
+    public String getSrcHardwareAddress() {
+        return srcHardwareAddress;
+    }
+
+    public String getDstHardwareAddress() {
+        return dstHardwareAddress;
     }
 
     public String getOtherProtocol() {
@@ -107,4 +149,7 @@ public class PacketHeader {
         return isIpV6;
     }
 
+    public boolean isSameSubnet() {
+        return isSameSubnet;
+    }
 }

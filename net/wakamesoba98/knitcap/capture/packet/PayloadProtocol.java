@@ -1,10 +1,22 @@
 package net.wakamesoba98.knitcap.capture.packet;
 
+import javafx.scene.paint.Color;
+
 public enum PayloadProtocol {
-    TCP,
-    UDP,
-    ICMPv4,
-    ICMPv6,
-    ARP,
-    OTHER
+    TCP    (Color.BLUE),
+    UDP    (Color.RED),
+    ICMPv4 (Color.GREEN),
+    ICMPv6 (Color.GREEN),
+    ARP    (Color.PURPLE),
+    OTHER  (Color.BLACK)
+    ;
+
+    private final Color color;
+    PayloadProtocol(Color color) {
+        this.color = color;
+    }
+
+    public Color getColor() {
+        return color;
+    }
 }

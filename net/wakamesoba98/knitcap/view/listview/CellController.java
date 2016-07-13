@@ -4,10 +4,9 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Label;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
-import net.wakamesoba98.knitcap.capture.IfaceAddress;
 import net.wakamesoba98.knitcap.capture.packet.PacketHeader;
+import net.wakamesoba98.knitcap.capture.packet.PayloadProtocol;
 
 import java.io.File;
 
@@ -27,10 +26,9 @@ public class CellController {
         noneUri = new File(getClass().getResource("../../png/none.png").getPath()).toURI().toString();
     }
 
-
     public void update(PacketHeader item) {
-        labelAddrSrc.setText(item.getSrcAddr());
-        labelAddrDst.setText(item.getDstAddr());
+        labelAddrSrc.setText(item.getSrcIpAddress());
+        labelAddrDst.setText(item.getDstIpAddress());
 
         if (item.getSrcPort() > 0 && item.getDstPort() > 0) {
             labelPortSrc.setText(":" + item.getSrcPort());
@@ -41,49 +39,31 @@ public class CellController {
         }
 
         if (item.getProtocol() != null) {
-            String proto = item.getProtocol().toString();
-            Color color;
-            switch (item.getProtocol()) {
-                case TCP:
-                    color = Color.BLUE;
-                    break;
-
-                case UDP:
-                    color = Color.RED;
-                    break;
-
-                case ICMPv4:
-                case ICMPv6:
-                    color = Color.GREEN;
-                    break;
-
-                case ARP:
-                    color = Color.PURPLE;
-                    break;
-
-                default:
-                    color = Color.BLACK;
-                    proto = "Other (" + item.getOtherProtocol() + ")";
-                    break;
+            PayloadProtocol proto = item.getProtocol();
+            if (proto == PayloadProtocol.OTHER) {
+                labelProtocol.setText("Other (" + item.getOtherProtocol() + ")");
+            } else {
+                labelProtocol.setText(proto.toString());
             }
-
-            labelProtocol.setText(proto);
-            rectangle.setFill(color);
+            rectangle.setFill(proto.getColor());
         }
 
         int fontSize = item.isIpV6() ? 14 : 22;
         labelAddrSrc.setStyle("-fx-font-size: " + fontSize);
         labelAddrDst.setStyle("-fx-font-size: " + fontSize);
 
-        IfaceAddress address = item.getIfaceAddress();
-        String addrV4 = address.getAddrV4();
-        String addrV6 = address.getAddrV6();
-        if (item.getSrcAddr().equals(addrV4) || item.getSrcAddr().equals(addrV6)) {
-            imageConnStatus.setImage(new Image(txUri));
-        } else if (item.getDstAddr().equals(addrV4) || item.getDstAddr().equals(addrV6)) {
-            imageConnStatus.setImage(new Image(rxUri));
-        } else {
-            imageConnStatus.setImage(new Image(noneUri));
+        switch (item.getPacketType()) {
+            case SEND:
+                imageConnStatus.setImage(new Image(txUri));
+                break;
+
+            case RECEIVE:
+                imageConnStatus.setImage(new Image(rxUri));
+                break;
+
+            default:
+                imageConnStatus.setImage(new Image(noneUri));
+                break;
         }
     }
 }

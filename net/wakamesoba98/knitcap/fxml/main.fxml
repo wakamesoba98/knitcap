@@ -1,31 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import javafx.scene.canvas.Canvas?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-<VBox prefHeight="480.0" prefWidth="640.0" xmlns="http://javafx.com/javafx/8.0.92"
-      xmlns:fx="http://javafx.com/fxml/1" fx:controller="net.wakamesoba98.knitcap.view.Controller">
+<VBox prefHeight="720.0" prefWidth="1280.0" xmlns="http://javafx.com/javafx/8.0.92" xmlns:fx="http://javafx.com/fxml/1" fx:controller="net.wakamesoba98.knitcap.view.Controller">
   <MenuBar VBox.vgrow="NEVER">
     <Menu mnemonicParsing="false" text="File">
-      <MenuItem mnemonicParsing="false" text="New"/>
-      <MenuItem mnemonicParsing="false" text="Open…"/>
-      <Menu mnemonicParsing="false" text="Open Recent"/>
-      <SeparatorMenuItem mnemonicParsing="false"/>
-      <MenuItem mnemonicParsing="false" text="Preferences…"/>
-      <SeparatorMenuItem mnemonicParsing="false"/>
-      <MenuItem mnemonicParsing="false" text="Quit"/>
+      <MenuItem mnemonicParsing="false" text="New" />
+      <MenuItem mnemonicParsing="false" text="Open…" />
+      <Menu mnemonicParsing="false" text="Open Recent" />
+      <SeparatorMenuItem mnemonicParsing="false" />
+      <MenuItem mnemonicParsing="false" text="Preferences…" />
+      <SeparatorMenuItem mnemonicParsing="false" />
+      <MenuItem mnemonicParsing="false" text="Quit" />
     </Menu>
     <Menu mnemonicParsing="false" text="Capture">
-      <MenuItem mnemonicParsing="false" text="Start" fx:id="menuStart"/>
-      <MenuItem mnemonicParsing="false" text="Stop" fx:id="menuStop"/>
+      <MenuItem fx:id="menuStart" mnemonicParsing="false" text="Start" />
+      <MenuItem fx:id="menuStop" mnemonicParsing="false" text="Stop" />
     </Menu>
     <Menu mnemonicParsing="false" text="Help">
-      <MenuItem mnemonicParsing="false" text="About Knitcap"/>
+      <MenuItem mnemonicParsing="false" text="About Knitcap" />
     </Menu>
   </MenuBar>
-  <SplitPane focusTraversable="true" prefHeight="-1.0" prefWidth="-1.0" VBox.vgrow="ALWAYS">
+  <SplitPane dividerPositions="0.5" focusTraversable="true" prefHeight="-1.0" prefWidth="-1.0" VBox.vgrow="ALWAYS">
     <AnchorPane>
-      <ListView fx:id="listView" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0"
-                AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0"/>
+      <ListView fx:id="listView" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0"
+                AnchorPane.topAnchor="0.0"/>
+    </AnchorPane>
+    <AnchorPane>
+      <ScrollPane AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0"
+                  AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+        <AnchorPane minHeight="0.0" minWidth="0.0">
+          <Canvas fx:id="canvas" height="680.0" width="1280.0" AnchorPane.bottomAnchor="0.0"
+                  AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0"/>
+        </AnchorPane>
+      </ScrollPane>
     </AnchorPane>
   </SplitPane>
 </VBox>

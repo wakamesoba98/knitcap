@@ -22,7 +22,7 @@ public class Main extends Application {
         Parent root = loader.load();
         controller = loader.getController();
 
-        Scene scene = new Scene(root, 640, 480);
+        Scene scene = new Scene(root, 1280, 720);
         primaryStage.setTitle("Knitcap");
         primaryStage.setScene(scene);
         primaryStage.show();
