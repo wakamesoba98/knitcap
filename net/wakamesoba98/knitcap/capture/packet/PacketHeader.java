@@ -11,7 +11,7 @@ public class PacketHeader {
     private String srcHardwareAddress, dstHardwareAddress;
     private String otherProtocol;
     private int srcPort, dstPort;
-    private boolean isSameSubnet;
+    private boolean isSrcAsSameSubnet, isDstAsSameSubnet;
     private boolean isIpV6;
 
     public PacketHeader(Packet packet, NetworkDevice networkDevice) {
@@ -87,7 +87,8 @@ public class PacketHeader {
         }
 
         if (!isIpV6) {
-            isSameSubnet = isSameSubnetV4(srcIpAddress, dstIpAddress, networkDevice.getIpV4SubnetMask());
+            isSrcAsSameSubnet = isSameSubnetV4(srcIpAddress, networkDevice.getIpV4Address(), networkDevice.getIpV4SubnetMask());
+            isDstAsSameSubnet = isSameSubnetV4(dstIpAddress, networkDevice.getIpV4Address(), networkDevice.getIpV4SubnetMask());
         }
     }
 
@@ -149,7 +150,11 @@ public class PacketHeader {
         return isIpV6;
     }
 
-    public boolean isSameSubnet() {
-        return isSameSubnet;
+    public boolean isSrcAsSameSubnet() {
+        return isSrcAsSameSubnet;
+    }
+
+    public boolean isDstAsSameSubnet() {
+        return isDstAsSameSubnet;
     }
 }

@@ -15,7 +15,7 @@ public class GeoIPUtils {
     private DatabaseReader reader;
 
     public GeoIPUtils() {
-        File database = new File(getClass().getResource("../db/GeoLite2-City.mmdb").getPath());
+        File database = new File(getClass().getResource("/res/db/GeoLite2-City.mmdb").getPath());
         try {
             reader = new DatabaseReader.Builder(database).withCache(new CHMCache()).build();
         } catch (IOException e) {

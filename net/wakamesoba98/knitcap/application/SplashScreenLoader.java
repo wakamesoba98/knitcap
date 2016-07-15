@@ -16,7 +16,7 @@ public class SplashScreenLoader extends Preloader {
 
     @Override
     public void start(Stage primaryStage) throws Exception {
-        Image image = new Image(getClass().getResourceAsStream("../png/splash.png"));
+        Image image = new Image(getClass().getResource("/res/png/splash.png").toExternalForm());
         int width = (int) image.getWidth();
         int height = (int) image.getHeight();
         ImageView imageView = new ImageView(image);
@@ -30,6 +30,7 @@ public class SplashScreenLoader extends Preloader {
         stage.setX((primaryScreenBounds.getWidth() - width) / 2);
         stage.setY((primaryScreenBounds.getHeight() - height) / 2);
         stage.setScene(scene);
+        stage.setTitle("Knitcap");
         stage.show();
     }
 

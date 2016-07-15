@@ -12,7 +12,7 @@ import net.wakamesoba98.knitcap.capture.Capture;
 import net.wakamesoba98.knitcap.capture.NetworkDevice;
 import net.wakamesoba98.knitcap.capture.packet.PacketHeader;
 import net.wakamesoba98.knitcap.view.canvas.NetworkMap;
-import net.wakamesoba98.knitcap.view.listview.PacketListCell;
+import net.wakamesoba98.knitcap.view.listview.CellController;
 import org.pcap4j.core.NotOpenException;
 import org.pcap4j.core.PcapNativeException;
 
@@ -30,13 +30,14 @@ public class Controller implements Initializable, GuiControllable {
 
     private Capture capture;
     private NetworkMap networkMap;
-    private ListProperty<PacketHeader> listProperty = new SimpleListProperty<>();
+    private ListProperty<PacketHeader> listProperty;
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
+        listProperty = new SimpleListProperty<>();
         listProperty.set(FXCollections.observableArrayList());
-        listView.setCellFactory(param -> new PacketListCell());
         listView.itemsProperty().bind(listProperty);
+        listView.setCellFactory(param -> new CellController());
 
         capture = new Capture(this);
         menuStart.setOnAction(actionEvent -> start());
@@ -65,11 +66,29 @@ public class Controller implements Initializable, GuiControllable {
 
     @Override
     public void addItem(PacketHeader item) {
-        listProperty.add(0, item);
-        if (listProperty.size() > 1000) {
-            listProperty.remove(1000);
+        if (!isSameHeader(item)) {
+            listProperty.add(0, item);
+            if (listProperty.size() > 1000) {
+                listProperty.remove(1000);
+            }
+            networkMap.addPacket(item);
         }
-        networkMap.addPacket(item);
+    }
+
+    private boolean isSameHeader(PacketHeader item) {
+        if (listProperty.size() == 0) {
+            return false;
+        }
+        PacketHeader before = listProperty.get(0);
+        if (before != null) {
+            return before.getProtocol() == item.getProtocol()
+                    && before.getSrcIpAddress().equals(item.getSrcIpAddress())
+                    && before.getDstIpAddress().equals(item.getDstIpAddress())
+                    && before.getSrcPort() == item.getSrcPort()
+                    && before.getDstPort() == item.getDstPort();
+        } else {
+            return false;
+        }
     }
 
     private void start() {

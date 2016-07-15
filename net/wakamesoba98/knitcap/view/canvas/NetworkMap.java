@@ -12,30 +12,34 @@ import java.util.*;
 
 public class NetworkMap {
 
-    private static final int QUEUE_MAX = 20;
+    private static final int QUEUE_MAX = 1000;
     private static final double FRAME_RATE = 60;
+    private static final String INTERNET = "INTERNET";
+    private static final int INTERNET_X = 300, INTERNET_Y = 20;
+    private static final int GATEWAY_X = 300, GATEWAY_Y = 250;
+    private static final int LINE_LENGTH = 250;
 
     private GraphicsContext context;
     private AnimationTimer animationTimer;
     private Queue<PacketCircle> packetQueue;
     private Map<String, NetworkObject> objectMap;
+    private List<String> localNetworkHostsList;
     private List<NetworkLine> lineList;
-    private String gatewayIpAddress, localhostIpAddress;
+    private String gatewayIpAddress;
     private long beforeNanoTime;
-    private boolean isAnimationStarted = false;
-    private int hostsCount;
+    private boolean isAnimationStarted;
 
     public NetworkMap(Canvas canvas) {
         packetQueue = new LinkedList<>();
         objectMap = new HashMap<>();
+        localNetworkHostsList = new ArrayList<>();
         lineList  = new ArrayList<>();
         context = canvas.getGraphicsContext2D();
         isAnimationStarted = false;
 
         animationTimer = new AnimationTimer() {
             public void handle(long currentNanoTime) {
-                // 30fps
-                if (currentNanoTime-beforeNanoTime >= ((1/FRAME_RATE)*1000*1000*1000)) {
+                if (currentNanoTime-beforeNanoTime >= (((double) 1/FRAME_RATE)*1000*1000*1000)) {
                     context.clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
 
                     for (NetworkLine line : lineList) {
@@ -82,31 +86,60 @@ public class NetworkMap {
         //if (device.getIpV6Address() != null && !device.getIpV6Address().equals("")) {
         //    localhostIpAddress = device.getIpV6Address();
         //} else {
-            localhostIpAddress = device.getIpV4Address();
+        detectHostsInNetwork(device.getIpV4Address());
         //}
-        objectMap.put(localhostIpAddress, new NetworkObject(new Image(getClass().getResourceAsStream("../../png/computer.png")), localhostIpAddress, 20, 420));
-        hostsCount = 1;
     }
 
     public void showGateway(String defaultGateway) {
         if (defaultGateway != null && !defaultGateway.equals("")) {
             gatewayIpAddress = defaultGateway;
-            objectMap.put(defaultGateway, new NetworkObject(new Image(getClass().getResourceAsStream("../../png/router.png")), defaultGateway, 20, 220));
-            lineList.add(new NetworkLine(objectMap.get(localhostIpAddress), objectMap.get(defaultGateway)));
+            objectMap.put(defaultGateway, new NetworkObject(new Image(getClass().getResource("/res/png/router.png").toExternalForm()), defaultGateway, GATEWAY_X, GATEWAY_Y));
         }
+        createNetworkLine();
     }
 
     public void showInternet() {
-        objectMap.put("INTERNET", new NetworkObject(new Image(getClass().getResourceAsStream("../../png/internet.png")), "Internet", 20, 20));
-        lineList.add(new NetworkLine(objectMap.get(gatewayIpAddress), objectMap.get("INTERNET")));
+        objectMap.put(INTERNET, new NetworkObject(new Image(getClass().getResource("/res/png/internet.png").toExternalForm()), INTERNET, INTERNET_X, INTERNET_Y));
+        createNetworkLine();
     }
 
     private void detectHostsInNetwork(String ipAddress) {
-        hostsCount++;
-        NetworkObject host = new NetworkObject(new Image(getClass().getResourceAsStream("../../png/computer.png")), ipAddress, (20 + 120*(hostsCount-1)), 420);
-        NetworkLine line = new NetworkLine(objectMap.get(gatewayIpAddress), host);
+        localNetworkHostsList.add(ipAddress);
+
+        NetworkObject host = new NetworkObject(new Image(getClass().getResource("/res/png/computer.png").toExternalForm()), ipAddress, GATEWAY_X, GATEWAY_Y + LINE_LENGTH);
         objectMap.put(ipAddress, host);
-        lineList.add(line);
+
+        int count = localNetworkHostsList.size() - 1;
+
+        if (count > 0) {
+            int i = 0;
+            for (String localNetworkHost : localNetworkHostsList) {
+                NetworkObject object = objectMap.get(localNetworkHost);
+
+                double rad = (1.0d + ((double) i / count)) * Math.PI;
+                int x = (int) (Math.cos(rad) * LINE_LENGTH + GATEWAY_X);
+                int y = (int) (Math.sin(rad) * -1 * LINE_LENGTH + GATEWAY_Y);
+
+                object.setX(x);
+                object.setY(y);
+
+                i++;
+            }
+        }
+
+        createNetworkLine();
+    }
+
+    private void createNetworkLine() {
+        lineList.clear();
+        if (objectMap.get(INTERNET) != null) {
+            lineList.add(new NetworkLine(objectMap.get(gatewayIpAddress), objectMap.get(INTERNET)));
+        }
+        if (objectMap.get(gatewayIpAddress) != null) {
+            for (String localNetworkHost : localNetworkHostsList) {
+                lineList.add(new NetworkLine(objectMap.get(gatewayIpAddress), objectMap.get(localNetworkHost)));
+            }
+        }
     }
 
     public void addPacket(PacketHeader header) {
@@ -118,29 +151,34 @@ public class NetworkMap {
             if (src == null || dst == null) {
                 switch (header.getPacketType()) {
                     case RECEIVE:
-                        if (header.isSameSubnet()) {
+                        if (header.isSrcAsSameSubnet()) {
                             // add new host to objectMap
                             detectHostsInNetwork(header.getSrcIpAddress());
                         } else {
-                            src = objectMap.get("INTERNET");
+                            src = objectMap.get(INTERNET);
                         }
                         break;
 
                     case SEND:
-                        if (header.isSameSubnet()) {
+                        if (header.isDstAsSameSubnet()) {
                             dst = objectMap.get(gatewayIpAddress);
                         } else {
-                            dst = objectMap.get("INTERNET");
+                            dst = objectMap.get(INTERNET);
                         }
                         break;
 
                     default:
-                        if (header.isSameSubnet()) {
-                            // add new host to objectMap
+                        if (header.isSrcAsSameSubnet()) {
                             if (src == null) {
                                 detectHostsInNetwork(header.getSrcIpAddress());
                             } else {
+                                dst = objectMap.get(INTERNET);
+                            }
+                        } else if (header.isDstAsSameSubnet()) {
+                            if (dst == null) {
                                 detectHostsInNetwork(header.getDstIpAddress());
+                            } else {
+                                src = objectMap.get(INTERNET);
                             }
                         }
                         break;

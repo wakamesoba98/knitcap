@@ -4,7 +4,7 @@ import javafx.scene.image.Image;
 
 public class NetworkObject {
 
-    private static final int IMG_SIZE = 96;
+    private static final int IMG_SIZE = 72;
     private Image image;
     private String name;
     private int x, y, width, height;
@@ -30,8 +30,16 @@ public class NetworkObject {
         return x;
     }
 
+    public void setX(int x) {
+        this.x = x;
+    }
+
     public int getY() {
         return y;
+    }
+
+    public void setY(int y) {
+        this.y = y;
     }
 
     public int getWidth() {
