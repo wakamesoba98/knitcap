@@ -7,20 +7,25 @@ import net.wakamesoba98.knitcap.capture.packet.PayloadProtocol;
 public class PacketCircle {
     private static final int STEP = 20;
     private static final int RADIUS = 16;
+    private NetworkMap map;
+    private PayloadProtocol protocol;
     private int srcX, srcY, gatewayX, gatewayY, dstX, dstY;
     private Color color;
+    private boolean broadcast;
     private int animation = 0;
     private boolean isPassedGateway = false, isFinished = false;
 
-    public PacketCircle(NetworkObject src, NetworkObject gateway, NetworkObject dst, PayloadProtocol protocol) {
+    public PacketCircle(NetworkMap map, NetworkObject src, NetworkObject gateway, NetworkObject dst, PayloadProtocol protocol, boolean broadcast) {
+        this.map = map;
+        this.protocol = protocol;
         srcX = src.getX() + src.getWidth()/2;
         srcY = src.getY() + src.getHeight()/2;
-
         gatewayX = gateway.getX() + gateway.getWidth()/2;
         gatewayY = gateway.getY() + gateway.getHeight()/2;
         dstX = dst.getX() + dst.getWidth()/2;
         dstY = dst.getY() + dst.getHeight()/2;
         this.color = protocol.getColor();
+        this.broadcast = broadcast;
     }
 
     public void draw(GraphicsContext context) {
@@ -55,6 +60,9 @@ public class PacketCircle {
             } else {
                 if (dstX == gatewayX && dstY == gatewayY) {
                     isFinished = true;
+                    if (broadcast) {
+                        map.sendBroadcast(protocol);
+                    }
                 } else {
                     isPassedGateway = true;
                     animation = 0;

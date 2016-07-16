@@ -12,6 +12,7 @@ public class PacketHeader {
     private String otherProtocol;
     private int srcPort, dstPort;
     private boolean isSrcAsSameSubnet, isDstAsSameSubnet;
+    private boolean isDstAsBroadcast;
     private boolean isIpV6;
 
     public PacketHeader(Packet packet, NetworkDevice networkDevice) {
@@ -89,6 +90,7 @@ public class PacketHeader {
         if (!isIpV6) {
             isSrcAsSameSubnet = isSameSubnetV4(srcIpAddress, networkDevice.getIpV4Address(), networkDevice.getIpV4SubnetMask());
             isDstAsSameSubnet = isSameSubnetV4(dstIpAddress, networkDevice.getIpV4Address(), networkDevice.getIpV4SubnetMask());
+            isDstAsBroadcast = isBroadcastV4(dstIpAddress, networkDevice.getIpV4SubnetMask());
         }
     }
 
@@ -99,6 +101,17 @@ public class PacketHeader {
         return (srcValue & maskValue) == (dstValue & maskValue);
     }
 
+    private boolean isBroadcastV4(String dstAddress, String mask) {
+        byte[] dstValue = convertByte(dstAddress);
+        byte[] maskValue = convertByte(mask);
+        for (int i = 0; i < 4; i++) {
+            if (~maskValue[i] != (byte) (dstValue[i] & ~maskValue[i])) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     private long convertLong(String address) {
         String[] octet = address.split("\\.");
         long result = 0;
@@ -106,6 +119,15 @@ public class PacketHeader {
             int n = Integer.valueOf(octet[i]);
             result = result << 8;
             result += n;
+        }
+        return result;
+    }
+
+    private byte[] convertByte(String address) {
+        String[] octet = address.split("\\.");
+        byte[] result = new byte[4];
+        for (int i = 0; i < 4; i++) {
+            result[i] = Short.valueOf(octet[i]).byteValue();
         }
         return result;
     }
@@ -156,5 +178,9 @@ public class PacketHeader {
 
     public boolean isDstAsSameSubnet() {
         return isDstAsSameSubnet;
+    }
+
+    public boolean isDstAsBroadcast() {
+        return isDstAsBroadcast;
     }
 }

@@ -1,12 +1,14 @@
 package net.wakamesoba98.knitcap.view.canvas;
 
 import javafx.animation.AnimationTimer;
+import javafx.application.Platform;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.image.Image;
 import javafx.scene.paint.Color;
 import net.wakamesoba98.knitcap.capture.NetworkDevice;
 import net.wakamesoba98.knitcap.capture.packet.PacketHeader;
+import net.wakamesoba98.knitcap.capture.packet.PayloadProtocol;
 
 import java.util.*;
 
@@ -22,10 +24,10 @@ public class NetworkMap {
     private GraphicsContext context;
     private AnimationTimer animationTimer;
     private Queue<PacketCircle> packetQueue;
-    private Map<String, NetworkObject> objectMap;
     private List<String> localNetworkHostsList;
+    private Map<String, NetworkObject> objectMap;
     private List<NetworkLine> lineList;
-    private String gatewayIpAddress;
+    private String localhostIpAddress, gatewayIpAddress;
     private long beforeNanoTime;
     private boolean isAnimationStarted;
 
@@ -86,7 +88,8 @@ public class NetworkMap {
         //if (device.getIpV6Address() != null && !device.getIpV6Address().equals("")) {
         //    localhostIpAddress = device.getIpV6Address();
         //} else {
-        detectHostsInNetwork(device.getIpV4Address());
+            localhostIpAddress = device.getIpV4Address();
+        detectHostsInNetwork(localhostIpAddress);
         //}
     }
 
@@ -149,46 +152,63 @@ public class NetworkMap {
             gateway = objectMap.get(gatewayIpAddress);
             dst = objectMap.get(header.getDstIpAddress());
             if (src == null || dst == null) {
-                switch (header.getPacketType()) {
-                    case RECEIVE:
-                        if (header.isSrcAsSameSubnet()) {
-                            // add new host to objectMap
-                            detectHostsInNetwork(header.getSrcIpAddress());
-                        } else {
-                            src = objectMap.get(INTERNET);
-                        }
-                        break;
-
-                    case SEND:
-                        if (header.isDstAsSameSubnet()) {
-                            dst = objectMap.get(gatewayIpAddress);
-                        } else {
-                            dst = objectMap.get(INTERNET);
-                        }
-                        break;
-
-                    default:
-                        if (header.isSrcAsSameSubnet()) {
-                            if (src == null) {
+                if (header.isDstAsBroadcast()) {
+                    dst = gateway;
+                } else {
+                    switch (header.getPacketType()) {
+                        case RECEIVE:
+                            if (header.isSrcAsSameSubnet()) {
+                                // add new host to objectMap
                                 detectHostsInNetwork(header.getSrcIpAddress());
-                            } else {
-                                dst = objectMap.get(INTERNET);
-                            }
-                        } else if (header.isDstAsSameSubnet()) {
-                            if (dst == null) {
-                                detectHostsInNetwork(header.getDstIpAddress());
                             } else {
                                 src = objectMap.get(INTERNET);
                             }
-                        }
-                        break;
+                            break;
 
+                        case SEND:
+                            if (header.isDstAsSameSubnet()) {
+                                dst = gateway;
+                            } else {
+                                dst = objectMap.get(INTERNET);
+                            }
+                            break;
+
+                        default:
+                            if (header.isSrcAsSameSubnet()) {
+                                if (src == null) {
+                                    detectHostsInNetwork(header.getSrcIpAddress());
+                                } else {
+                                    dst = objectMap.get(INTERNET);
+                                }
+                            } else if (header.isDstAsSameSubnet()) {
+                                if (dst == null) {
+                                    detectHostsInNetwork(header.getDstIpAddress());
+                                } else {
+                                    src = objectMap.get(INTERNET);
+                                }
+                            }
+                            break;
+
+                    }
                 }
             }
             if (src != null && dst != null) {
-                PacketCircle circle = new PacketCircle(src, gateway, dst, header.getProtocol());
+                PacketCircle circle = new PacketCircle(this, src, gateway, dst, header.getProtocol(), header.isDstAsBroadcast());
                 packetQueue.offer(circle);
             }
         }
+    }
+
+    void sendBroadcast(PayloadProtocol protocol) {
+        Platform.runLater(() -> {
+            for (String address : localNetworkHostsList) {
+                if (!address.equals(localhostIpAddress)) {
+                    NetworkObject gateway = objectMap.get(gatewayIpAddress);
+                    NetworkObject dst = objectMap.get(address);
+                    PacketCircle circle = new PacketCircle(this, gateway, gateway, dst, protocol, false);
+                    packetQueue.offer(circle);
+                }
+            }
+        });
     }
 }
