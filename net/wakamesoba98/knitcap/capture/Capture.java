@@ -2,7 +2,6 @@ package net.wakamesoba98.knitcap.capture;
 
 import com.maxmind.geoip2.exception.GeoIp2Exception;
 import com.maxmind.geoip2.record.Location;
-import javafx.application.Platform;
 import net.wakamesoba98.knitcap.capture.packet.PacketHeader;
 import net.wakamesoba98.knitcap.capture.packet.PacketType;
 import net.wakamesoba98.knitcap.capture.scanner.Arp;
@@ -20,7 +19,6 @@ import java.util.concurrent.Executors;
 
 public class Capture {
 
-    private static final String DEVICE = "wlp3s0";
     private static final String PING_DST = "8.8.8.8";
     private static final int COUNT = -1;
     private static final int READ_TIME_OUT = 10; // [ms]
@@ -39,7 +37,7 @@ public class Capture {
         isCapturing = false;
     }
 
-    public void capture() throws PcapNativeException, NotOpenException {
+    public void capture(String device) throws PcapNativeException, NotOpenException {
         if (isCapturing) {
             return;
         }
@@ -52,7 +50,7 @@ public class Capture {
             ifaceMap.put(iface.getName(), iface);
         }
 
-        PcapNetworkInterface networkIface = ifaceMap.get(DEVICE);
+        PcapNetworkInterface networkIface = ifaceMap.get(device);
         if (networkIface == null) {
             return;
         }
@@ -62,7 +60,7 @@ public class Capture {
         String gatewayAddress = scanner.getDefaultGateway();
         guiControllable.openedInterface(localhost);
 
-        PacketListener listener = packet -> Platform.runLater(() -> {
+        PacketListener listener = packet -> {
             if (packet == null || packet.getPayload() == null) {
                 return;
             }
@@ -79,7 +77,7 @@ public class Capture {
             }
 
             guiControllable.addItem(header);
-        });
+        };
 
         pcapHandle = networkIface.openLive(SNAP_LENGTH, PcapNetworkInterface.PromiscuousMode.PROMISCUOUS, READ_TIME_OUT);
         service = Executors.newFixedThreadPool(1);

@@ -8,7 +8,6 @@ import javafx.scene.image.Image;
 import javafx.scene.paint.Color;
 import net.wakamesoba98.knitcap.capture.NetworkDevice;
 import net.wakamesoba98.knitcap.capture.packet.PacketHeader;
-import net.wakamesoba98.knitcap.capture.packet.PayloadProtocol;
 
 import java.util.*;
 
@@ -27,7 +26,7 @@ public class NetworkMap {
     private List<String> localNetworkHostsList;
     private Map<String, NetworkObject> objectMap;
     private List<NetworkLine> lineList;
-    private String localhostIpAddress, gatewayIpAddress;
+    private String gatewayIpAddress;
     private long beforeNanoTime;
     private boolean isAnimationStarted;
 
@@ -88,8 +87,7 @@ public class NetworkMap {
         //if (device.getIpV6Address() != null && !device.getIpV6Address().equals("")) {
         //    localhostIpAddress = device.getIpV6Address();
         //} else {
-            localhostIpAddress = device.getIpV4Address();
-        detectHostsInNetwork(localhostIpAddress);
+        detectHostsInNetwork(device.getIpV4Address());
         //}
     }
 
@@ -193,21 +191,23 @@ public class NetworkMap {
                 }
             }
             if (src != null && dst != null) {
-                PacketCircle circle = new PacketCircle(this, src, gateway, dst, header.getProtocol(), header.isDstAsBroadcast());
+                PacketCircle circle = new PacketCircle(this, src, gateway, dst, header);
                 packetQueue.offer(circle);
             }
         }
     }
 
-    void sendBroadcast(PayloadProtocol protocol) {
+    void sendBroadcast(PacketHeader header) {
         Platform.runLater(() -> {
             for (String address : localNetworkHostsList) {
-                if (!address.equals(localhostIpAddress)) {
-                    NetworkObject gateway = objectMap.get(gatewayIpAddress);
-                    NetworkObject dst = objectMap.get(address);
-                    PacketCircle circle = new PacketCircle(this, gateway, gateway, dst, protocol, false);
-                    packetQueue.offer(circle);
+                if (address.equals(header.getSrcIpAddress())) {
+                    continue;
                 }
+
+                NetworkObject gateway = objectMap.get(gatewayIpAddress);
+                NetworkObject dst = objectMap.get(address);
+                PacketCircle circle = new PacketCircle(this, gateway, gateway, dst, header);
+                packetQueue.offer(circle);
             }
         });
     }

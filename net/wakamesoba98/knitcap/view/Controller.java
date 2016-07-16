@@ -1,5 +1,6 @@
 package net.wakamesoba98.knitcap.view;
 
+import javafx.application.Platform;
 import javafx.beans.property.ListProperty;
 import javafx.beans.property.SimpleListProperty;
 import javafx.collections.FXCollections;
@@ -28,9 +29,11 @@ public class Controller implements Initializable, GuiControllable {
     @FXML
     private Canvas canvas;
 
+    private static final int LIST_ITEM_MAX = 1000;
     private Capture capture;
     private NetworkMap networkMap;
     private ListProperty<PacketHeader> listProperty;
+    private PacketHeader lastPacket;
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -67,10 +70,13 @@ public class Controller implements Initializable, GuiControllable {
     @Override
     public void addItem(PacketHeader item) {
         if (!isSameHeader(item)) {
-            listProperty.add(0, item);
-            if (listProperty.size() > 1000) {
-                listProperty.remove(1000);
-            }
+            lastPacket = item;
+            Platform.runLater(() -> {
+                listProperty.add(0, item);
+                if (listProperty.size() > LIST_ITEM_MAX) {
+                    listProperty.remove(LIST_ITEM_MAX);
+                }
+            });
             networkMap.addPacket(item);
         }
     }
@@ -79,13 +85,12 @@ public class Controller implements Initializable, GuiControllable {
         if (listProperty.size() == 0) {
             return false;
         }
-        PacketHeader before = listProperty.get(0);
-        if (before != null) {
-            return before.getProtocol() == item.getProtocol()
-                    && before.getSrcIpAddress().equals(item.getSrcIpAddress())
-                    && before.getDstIpAddress().equals(item.getDstIpAddress())
-                    && before.getSrcPort() == item.getSrcPort()
-                    && before.getDstPort() == item.getDstPort();
+        if (lastPacket != null) {
+            return lastPacket.getProtocol() == item.getProtocol()
+                    && lastPacket.getSrcIpAddress().equals(item.getSrcIpAddress())
+                    && lastPacket.getDstIpAddress().equals(item.getDstIpAddress())
+                    && lastPacket.getSrcPort() == item.getSrcPort()
+                    && lastPacket.getDstPort() == item.getDstPort();
         } else {
             return false;
         }
@@ -96,7 +101,7 @@ public class Controller implements Initializable, GuiControllable {
         networkMap = new NetworkMap(canvas);
         networkMap.start();
         try {
-            capture.capture();
+            capture.capture("wlp3s0");
         } catch (PcapNativeException | NotOpenException e) {
             e.printStackTrace();
         }
