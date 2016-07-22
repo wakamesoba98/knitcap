@@ -55,11 +55,18 @@ public class PacketCircle {
         if (animation >= STEP) {
             if (isPassedGateway) {
                 isFinished = true;
+                map = null;
+                header = null;
+                color = null;
             } else {
                 if (dstX == gatewayX && dstY == gatewayY) {
                     isFinished = true;
                     if (header.isDstAsBroadcast()) {
                         map.sendBroadcast(header);
+                    } else {
+                        map = null;
+                        header = null;
+                        color = null;
                     }
                 } else {
                     isPassedGateway = true;

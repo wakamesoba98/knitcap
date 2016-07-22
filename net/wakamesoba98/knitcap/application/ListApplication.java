@@ -1,16 +1,15 @@
 package net.wakamesoba98.knitcap.application;
 
-
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
-import net.wakamesoba98.knitcap.view.MainAppController;
+import net.wakamesoba98.knitcap.view.ListAppController;
 
-public class MainApplication extends Application {
+public class ListApplication extends Application {
 
-    private MainAppController controller;
+    private ListAppController controller;
 
     public static void main(String[] args) {
         launch(args);
@@ -18,16 +17,14 @@ public class MainApplication extends Application {
 
     @Override
     public void init() throws Exception {
-        // :)
-        Thread.sleep(1500);
     }
 
     @Override
     public void start(Stage primaryStage) throws Exception {
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("/res/fxml/main.fxml"));
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("/res/fxml/list.fxml"));
         Parent root = loader.load();
         controller = loader.getController();
-        Scene scene = new Scene(root, 1280, 720);
+        Scene scene = new Scene(root, 600, 720);
         primaryStage.setTitle("Knitcap");
         primaryStage.setScene(scene);
         primaryStage.show();

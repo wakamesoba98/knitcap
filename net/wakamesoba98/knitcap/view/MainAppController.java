@@ -1,50 +1,52 @@
 package net.wakamesoba98.knitcap.view;
 
-import javafx.application.Platform;
-import javafx.beans.property.ListProperty;
-import javafx.beans.property.SimpleListProperty;
-import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.canvas.Canvas;
-import javafx.scene.control.ListView;
+import javafx.scene.control.ChoiceDialog;
 import javafx.scene.control.MenuItem;
+import javafx.stage.Modality;
 import net.wakamesoba98.knitcap.capture.Capture;
 import net.wakamesoba98.knitcap.capture.NetworkDevice;
 import net.wakamesoba98.knitcap.capture.packet.PacketHeader;
+import net.wakamesoba98.knitcap.view.canvas.ListDraw;
 import net.wakamesoba98.knitcap.view.canvas.NetworkMap;
-import net.wakamesoba98.knitcap.view.listview.CellController;
 import org.pcap4j.core.NotOpenException;
 import org.pcap4j.core.PcapNativeException;
+import org.pcap4j.core.PcapNetworkInterface;
+import org.pcap4j.core.Pcaps;
 
 import java.net.URL;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Optional;
 import java.util.ResourceBundle;
+import java.util.stream.Collectors;
 
-public class Controller implements Initializable, GuiControllable {
+public class MainAppController implements Initializable, GuiControllable {
 
-    @FXML
-    private ListView<PacketHeader> listView;
     @FXML
     private MenuItem menuStart, menuStop;
     @FXML
-    private Canvas canvas;
+    private Canvas listCanvas;
+    @FXML
+    private Canvas mapCanvas;
 
     private static final int LIST_ITEM_MAX = 1000;
     private Capture capture;
     private NetworkMap networkMap;
-    private ListProperty<PacketHeader> listProperty;
+    private ListDraw listDraw;
+    private LinkedList<PacketHeader> packetList;
     private PacketHeader lastPacket;
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        listProperty = new SimpleListProperty<>();
-        listProperty.set(FXCollections.observableArrayList());
-        listView.itemsProperty().bind(listProperty);
-        listView.setCellFactory(param -> new CellController());
-
-        capture = new Capture(this);
+        packetList = new LinkedList<>();
         menuStart.setOnAction(actionEvent -> start());
         menuStop.setOnAction(actionEvent -> destroy());
+        listDraw = new ListDraw();
+        networkMap = new NetworkMap();
+        capture = new Capture(this);
     }
 
     @Override
@@ -71,18 +73,16 @@ public class Controller implements Initializable, GuiControllable {
     public void addItem(PacketHeader item) {
         if (!isSameHeader(item)) {
             lastPacket = item;
-            Platform.runLater(() -> {
-                listProperty.add(0, item);
-                if (listProperty.size() > LIST_ITEM_MAX) {
-                    listProperty.remove(LIST_ITEM_MAX);
-                }
-            });
             networkMap.addPacket(item);
+            packetList.addFirst(item);
+            while (packetList.size() > LIST_ITEM_MAX) {
+                packetList.removeLast();
+            }
         }
     }
 
     private boolean isSameHeader(PacketHeader item) {
-        if (listProperty.size() == 0) {
+        if (packetList.size() == 0) {
             return false;
         }
         if (lastPacket != null) {
@@ -97,13 +97,23 @@ public class Controller implements Initializable, GuiControllable {
     }
 
     private void start() {
-        listProperty.clear();
-        networkMap = new NetworkMap(canvas);
-        networkMap.start();
+        destroy();
         try {
-            capture.capture("wlp3s0");
+            List<PcapNetworkInterface> devices = Pcaps.findAllDevs();
+            List<String> names = devices.stream().map(PcapNetworkInterface::getName).collect(Collectors.toList());
+            ChoiceDialog<String> dialog = new ChoiceDialog<>(names.get(0), names);
+            dialog.initModality(Modality.WINDOW_MODAL);
+            dialog.setResizable(false);
+            dialog.setHeaderText("Choose a network interface:");
+            Optional<String> result = dialog.showAndWait();
+            if (result.isPresent()) {
+                listDraw.start(listCanvas, packetList);
+                networkMap.start(mapCanvas);
+                capture.capture(dialog.getSelectedItem());
+            }
         } catch (PcapNativeException | NotOpenException e) {
             e.printStackTrace();
+            destroy();
         }
     }
 
@@ -111,6 +121,11 @@ public class Controller implements Initializable, GuiControllable {
         if (networkMap != null) {
             networkMap.stop();
         }
-        capture.destroy();
+        if (listDraw != null) {
+            listDraw.stop();
+        }
+        if (capture != null) {
+            capture.destroy();
+        }
     }
 }

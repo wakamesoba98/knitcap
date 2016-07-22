@@ -1,11 +1,12 @@
 package net.wakamesoba98.knitcap.view.canvas;
 
-import javafx.animation.AnimationTimer;
-import javafx.application.Platform;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.image.Image;
 import javafx.scene.paint.Color;
+import javafx.util.Duration;
 import net.wakamesoba98.knitcap.capture.NetworkDevice;
 import net.wakamesoba98.knitcap.capture.packet.PacketHeader;
 
@@ -14,72 +15,60 @@ import java.util.*;
 public class NetworkMap {
 
     private static final int QUEUE_MAX = 1000;
-    private static final double FRAME_RATE = 60;
     private static final String INTERNET = "INTERNET";
-    private static final int INTERNET_X = 300, INTERNET_Y = 20;
-    private static final int GATEWAY_X = 300, GATEWAY_Y = 250;
-    private static final int LINE_LENGTH = 250;
+    private static final int INTERNET_X = 250, INTERNET_Y = 20;
+    private static final int GATEWAY_X = 250, GATEWAY_Y = 250;
+    private static final int LINE_LENGTH = 230;
 
     private GraphicsContext context;
-    private AnimationTimer animationTimer;
+    private Timeline timeline;
     private Queue<PacketCircle> packetQueue;
     private List<String> localNetworkHostsList;
     private Map<String, NetworkObject> objectMap;
     private List<NetworkLine> lineList;
     private String gatewayIpAddress;
-    private long beforeNanoTime;
-    private boolean isAnimationStarted;
 
-    public NetworkMap(Canvas canvas) {
+    public void start(Canvas canvas) {
+        stop();
+
         packetQueue = new LinkedList<>();
         objectMap = new HashMap<>();
-        localNetworkHostsList = new ArrayList<>();
-        lineList  = new ArrayList<>();
+        localNetworkHostsList = new LinkedList<>();
+        lineList = new LinkedList<>();
         context = canvas.getGraphicsContext2D();
-        isAnimationStarted = false;
 
-        animationTimer = new AnimationTimer() {
-            public void handle(long currentNanoTime) {
-                if (currentNanoTime-beforeNanoTime >= (((double) 1/FRAME_RATE)*1000*1000*1000)) {
-                    context.clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
+        timeline = new Timeline();
+        timeline.setCycleCount(Timeline.INDEFINITE);
+        KeyFrame keyFrame = new KeyFrame(
+            Duration.seconds(0.017), // 60 FPS
+            actionEvent -> {
+                context.clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
 
-                    for (NetworkLine line : lineList) {
-                        context.setStroke(Color.BLUE);
-                        context.strokeLine(line.getFromX(), line.getFromY(), line.getToX(), line.getToY());
-                    }
+                for (NetworkLine line : lineList) {
+                    context.setStroke(Color.BLUE);
+                    context.strokeLine(line.getFromX(), line.getFromY(), line.getToX(), line.getToY());
+                }
 
-                    Iterator<PacketCircle> iterator = packetQueue.iterator();
-                    while (iterator.hasNext()) {
-                        PacketCircle circle = iterator.next();
-                        if (circle.isFinished()) {
-                            iterator.remove();
-                        } else {
-                            circle.draw(context);
-                        }
-                    }
-                    beforeNanoTime = currentNanoTime;
+                threadSafeQueueControl(false, null);
 
-                    for (NetworkObject object : objectMap.values()) {
-                        context.drawImage(object.getImage(), object.getX(), object.getY(), object.getWidth(), object.getHeight());
-                        context.setFill(Color.BLACK);
-                        context.fillText(object.getName(), object.getX()+object.getWidth()-20, object.getY());
-                    }
+                context.setFill(Color.BLACK);
+                for (NetworkObject object : objectMap.values()) {
+                    context.drawImage(object.getImage(), object.getX(), object.getY(), object.getWidth(), object.getHeight());
+                }
+                for (NetworkObject object : objectMap.values()) {
+                    context.fillText(object.getName(), object.getX() + object.getWidth() - 20, object.getY());
                 }
             }
-        };
-    }
-
-    public void start() {
-        if (isAnimationStarted) {
-            stop();
-        }
-        animationTimer.start();
-        isAnimationStarted = true;
+        );
+        timeline.getKeyFrames().add(keyFrame);
+        timeline.play();
     }
 
     public void stop() {
-        animationTimer.stop();
-        isAnimationStarted = false;
+        if (timeline != null) {
+            timeline.stop();
+            timeline = null;
+        }
     }
 
     public void showLocalhost(NetworkDevice device) {
@@ -192,23 +181,38 @@ public class NetworkMap {
             }
             if (src != null && dst != null) {
                 PacketCircle circle = new PacketCircle(this, src, gateway, dst, header);
-                packetQueue.offer(circle);
+                threadSafeQueueControl(true, circle);
             }
         }
     }
 
     void sendBroadcast(PacketHeader header) {
-        Platform.runLater(() -> {
+        new Thread(() -> {
             for (String address : localNetworkHostsList) {
                 if (address.equals(header.getSrcIpAddress())) {
                     continue;
                 }
-
                 NetworkObject gateway = objectMap.get(gatewayIpAddress);
                 NetworkObject dst = objectMap.get(address);
                 PacketCircle circle = new PacketCircle(this, gateway, gateway, dst, header);
-                packetQueue.offer(circle);
+                threadSafeQueueControl(true, circle);
             }
-        });
+        }).start();
+    }
+
+    private synchronized void threadSafeQueueControl(boolean offer, PacketCircle offerCircle) {
+        if (offer) {
+            packetQueue.offer(offerCircle);
+        } else {
+            Iterator<PacketCircle> iterator = packetQueue.iterator();
+            while (iterator.hasNext()) {
+                PacketCircle circle = iterator.next();
+                if (circle.isFinished()) {
+                    iterator.remove();
+                } else {
+                    circle.draw(context);
+                }
+            }
+        }
     }
 }

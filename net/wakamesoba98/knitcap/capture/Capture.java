@@ -1,21 +1,16 @@
 package net.wakamesoba98.knitcap.capture;
 
-import com.maxmind.geoip2.exception.GeoIp2Exception;
-import com.maxmind.geoip2.record.Location;
 import net.wakamesoba98.knitcap.capture.packet.PacketHeader;
 import net.wakamesoba98.knitcap.capture.packet.PacketType;
 import net.wakamesoba98.knitcap.capture.scanner.Arp;
 import net.wakamesoba98.knitcap.capture.scanner.HostScanner;
 import net.wakamesoba98.knitcap.capture.scanner.Ping;
-import net.wakamesoba98.knitcap.geoip.GeoIPUtils;
 import net.wakamesoba98.knitcap.view.GuiControllable;
 import org.pcap4j.core.*;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public class Capture {
 
@@ -25,15 +20,12 @@ public class Capture {
     private static final int SNAP_LENGTH = 65536; // [bytes]
 
     private PcapHandle pcapHandle;
-    private ExecutorService service;
     private NetworkDevice localhost, gateway;
-    private GeoIPUtils geoIPUtils;
     private GuiControllable guiControllable;
-    private boolean isCapturing;
+    private boolean isCapturing, isArpReceived, isPingReceived;
 
     public Capture(GuiControllable gui) {
         guiControllable = gui;
-        geoIPUtils = new GeoIPUtils();
         isCapturing = false;
     }
 
@@ -43,6 +35,8 @@ public class Capture {
         }
 
         isCapturing = true;
+        isArpReceived = false;
+        isPingReceived = false;
 
         List<PcapNetworkInterface> ifaceList = Pcaps.findAllDevs();
         Map<String, PcapNetworkInterface> ifaceMap = new HashMap<>();
@@ -68,11 +62,15 @@ public class Capture {
 
             switch (header.getProtocol()) {
                 case ARP:
-                    receivedArpReply(gatewayAddress, header, networkIface);
+                    if (!isArpReceived) {
+                        receivedArpReply(gatewayAddress, header, networkIface);
+                    }
                     break;
 
                 case ICMPv4: case ICMPv6:
-                    receivedPingReply(header);
+                    if (!isPingReceived) {
+                        receivedPingReply(header);
+                    }
                     break;
             }
 
@@ -80,8 +78,7 @@ public class Capture {
         };
 
         pcapHandle = networkIface.openLive(SNAP_LENGTH, PcapNetworkInterface.PromiscuousMode.PROMISCUOUS, READ_TIME_OUT);
-        service = Executors.newFixedThreadPool(1);
-        final Thread thread = new Thread(() -> {
+        new Thread(() -> {
             try {
                 pcapHandle.loop(COUNT, listener);
             } catch (PcapNativeException e) {
@@ -89,8 +86,8 @@ public class Capture {
             } catch (InterruptedException | NotOpenException e) {
                 // do nothing
             }
-        });
-        service.execute(thread);
+        }).start();
+
 
         Arp arp = new Arp();
         PcapHandle sendHandle = networkIface.openLive(SNAP_LENGTH, PcapNetworkInterface.PromiscuousMode.PROMISCUOUS, READ_TIME_OUT);
@@ -106,34 +103,32 @@ public class Capture {
             isCapturing = false;
             try {
                 pcapHandle.breakLoop();
+                pcapHandle.close();
             } catch (NotOpenException e) {
                 e.printStackTrace();
-            } finally {
-                pcapHandle.close();
-                service.shutdown();
             }
         }
     }
 
     private void receivedArpReply(String gatewayAddress, PacketHeader header, PcapNetworkInterface networkIface) {
-        if (gateway == null) {
-            if (header.getPacketType() == PacketType.RECEIVE
-                && header.getSrcIpAddress().equals(gatewayAddress)) {
+        if (header.getPacketType() == PacketType.RECEIVE
+            && header.getSrcIpAddress().equals(gatewayAddress)) {
 
-                // TODO Subnet mask of IPv6
-                gateway = new NetworkDevice(header.getSrcHardwareAddress(), header.getSrcIpAddress(), localhost.getIpV4SubnetMask());
+            isArpReceived = true;
 
-                guiControllable.showGateway(gateway.getIpV4Address());
-                Ping ping = new Ping(localhost);
-                try {
-                    PcapHandle sendHandle = networkIface.openLive(SNAP_LENGTH, PcapNetworkInterface.PromiscuousMode.PROMISCUOUS, READ_TIME_OUT);
-                    new Thread(() -> {
-                        ping.send(sendHandle, gateway, PING_DST);
-                        sendHandle.close();
-                    }).start();
-                } catch (PcapNativeException e) {
-                    e.printStackTrace();
-                }
+            // TODO Subnet mask of IPv6
+            gateway = new NetworkDevice(header.getSrcHardwareAddress(), header.getSrcIpAddress(), localhost.getIpV4SubnetMask());
+
+            guiControllable.showGateway(gateway.getIpV4Address());
+            Ping ping = new Ping(localhost);
+            try {
+                PcapHandle sendHandle = networkIface.openLive(SNAP_LENGTH, PcapNetworkInterface.PromiscuousMode.PROMISCUOUS, READ_TIME_OUT);
+                new Thread(() -> {
+                    ping.send(sendHandle, gateway, PING_DST);
+                    sendHandle.close();
+                }).start();
+            } catch (PcapNativeException e) {
+                e.printStackTrace();
             }
         }
     }
@@ -142,24 +137,8 @@ public class Capture {
         if (header.getPacketType() == PacketType.RECEIVE
             && header.getSrcIpAddress().equals(PING_DST)) {
 
+            isPingReceived = true;
             guiControllable.showInternet();
-        }
-    }
-
-    private void debug(PacketHeader header) {
-        String s = header.getProtocol() + "\t" + header.getSrcIpAddress() + ":" + header.getSrcPort() + "\t->\t" + header.getDstIpAddress() + ":" + header.getDstPort();
-        System.out.println(s);
-    }
-
-    private void lookupGeoIP(PacketHeader header) {
-        if (geoIPUtils != null && !header.isIpV6()) {
-            Location location;
-            try {
-                location = geoIPUtils.lookup(header.getDstIpAddress());
-                System.out.println(location.getLatitude() + ":" + location.getLongitude());
-            } catch (GeoIp2Exception e) {
-                // do nothing
-            }
         }
     }
 }
