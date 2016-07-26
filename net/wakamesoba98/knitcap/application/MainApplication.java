@@ -1,41 +1,24 @@
 package net.wakamesoba98.knitcap.application;
 
-
 import javafx.application.Application;
-import javafx.fxml.FXMLLoader;
-import javafx.scene.Parent;
-import javafx.scene.Scene;
 import javafx.stage.Stage;
-import net.wakamesoba98.knitcap.view.MainAppController;
+import net.wakamesoba98.knitcap.config.Config;
+import net.wakamesoba98.knitcap.window.WindowSizeDialog;
 
 public class MainApplication extends Application {
 
-    private MainAppController controller;
-
-    public static void main(String[] args) {
-        launch(args);
-    }
-
-    @Override
-    public void init() throws Exception {
-        // :)
-        Thread.sleep(1500);
+    public MainApplication() {
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
     public void start(Stage primaryStage) throws Exception {
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("/res/fxml/main.fxml"));
-        Parent root = loader.load();
-        controller = loader.getController();
-        Scene scene = new Scene(root, 1280, 720);
-        primaryStage.setTitle("Knitcap");
-        primaryStage.setScene(scene);
-        primaryStage.show();
-    }
-
-    @Override
-    public void stop() throws Exception {
-        super.stop();
-        controller.destroy();
+        Config config = new Config();
+        WindowSizeDialog dialog = new WindowSizeDialog();
+        dialog.show(config);
     }
 }

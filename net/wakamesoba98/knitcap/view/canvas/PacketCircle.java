@@ -1,10 +1,10 @@
 package net.wakamesoba98.knitcap.view.canvas;
 
-import javafx.scene.canvas.GraphicsContext;
-import javafx.scene.paint.Color;
 import net.wakamesoba98.knitcap.capture.packet.PacketHeader;
+import org.newdawn.slick.Color;
+import org.newdawn.slick.Graphics;
 
-public class PacketCircle {
+class PacketCircle {
     private static final int STEP = 20;
     private static final int RADIUS = 16;
     private NetworkMap map;
@@ -14,7 +14,7 @@ public class PacketCircle {
     private int animation = 0;
     private boolean isPassedGateway = false, isFinished = false;
 
-    public PacketCircle(NetworkMap map, NetworkObject src, NetworkObject gateway, NetworkObject dst, PacketHeader header) {
+    PacketCircle(NetworkMap map, NetworkObject src, NetworkObject gateway, NetworkObject dst, PacketHeader header) {
         this.map = map;
         srcX = src.getX() + src.getWidth()/2;
         srcY = src.getY() + src.getHeight()/2;
@@ -26,7 +26,7 @@ public class PacketCircle {
         this.color = header.getProtocol().getColor();
     }
 
-    public void draw(GraphicsContext context) {
+    void draw(Graphics graphics) {
         int x, y, fromX, fromY, toX, toY;
         animation++;
 
@@ -49,8 +49,8 @@ public class PacketCircle {
         x = fromX + (int) (((double) (toX - fromX) / STEP) * animation);
         y = fromY + (int) (((double) (toY - fromY) / STEP) * animation);
 
-        context.setFill(color);
-        context.fillOval(x - RADIUS/2, y - RADIUS/2, RADIUS, RADIUS);
+        graphics.setColor(color);
+        graphics.fillOval(x - RADIUS/2, y - RADIUS/2, RADIUS, RADIUS);
 
         if (animation >= STEP) {
             if (isPassedGateway) {
@@ -76,7 +76,7 @@ public class PacketCircle {
         }
     }
 
-    public boolean isFinished() {
+    boolean isFinished() {
         return isFinished;
     }
 }

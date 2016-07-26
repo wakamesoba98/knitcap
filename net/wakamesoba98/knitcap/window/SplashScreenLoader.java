@@ -1,4 +1,4 @@
-package net.wakamesoba98.knitcap.application;
+package net.wakamesoba98.knitcap.window;
 
 import javafx.application.Preloader;
 import javafx.geometry.Rectangle2D;

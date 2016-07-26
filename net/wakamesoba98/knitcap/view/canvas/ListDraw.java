@@ -1,126 +1,106 @@
 package net.wakamesoba98.knitcap.view.canvas;
 
-import javafx.animation.KeyFrame;
-import javafx.animation.Timeline;
-import javafx.scene.canvas.Canvas;
-import javafx.scene.canvas.GraphicsContext;
-import javafx.scene.image.Image;
-import javafx.scene.paint.Color;
-import javafx.scene.text.Font;
-import javafx.util.Duration;
 import net.wakamesoba98.knitcap.capture.packet.PacketHeader;
 import net.wakamesoba98.knitcap.capture.packet.PayloadProtocol;
+import net.wakamesoba98.knitcap.window.MainWindow;
+import org.newdawn.slick.Color;
+import org.newdawn.slick.Graphics;
+import org.newdawn.slick.Image;
+import org.newdawn.slick.*;
 
+import java.awt.Font;
 import java.util.List;
 
 public class ListDraw {
 
-    private static final int ITEM_WIDTH = 640, ITEM_HEIGHT = 70;
-    private static final int FONT_BASE = 16;
-    private static final int IMG_SIZE = 16;
+    static final int ITEM_WIDTH = 600;
+    private static final int ITEM_HEIGHT = 70;
 
-    private GraphicsContext context;
-    private Timeline timeline;
-    private Font small, large;
+    private TrueTypeFont small, large;
     private Image txImg, rxImg, noneImg;
+    private int height;
 
-    public ListDraw() {
-        small = new Font(14);
-        large = new Font(22);
-        txImg = new Image(getClass().getResource("/res/png/tx.png").toExternalForm());
-        rxImg = new Image(getClass().getResource("/res/png/rx.png").toExternalForm());
-        noneImg = new Image(getClass().getResource("/res/png/none.png").toExternalForm());
+    public ListDraw(int height) throws SlickException {
+        small = new TrueTypeFont(new Font("Sans", Font.PLAIN, 14), true);
+        large = new TrueTypeFont(new Font("Sans", Font.PLAIN, 22), true);
+        SpriteSheet sheet = new SpriteSheet("res/png/sprite_cell.png", 16, 16);
+        txImg = sheet.getSprite(0, 0);
+        rxImg = sheet.getSprite(1, 0);
+        noneImg = sheet.getSprite(2, 0);
+        this.height = height;
     }
 
-    public void start(Canvas canvas, List<PacketHeader> itemList) {
-        stop();
-
-        context = canvas.getGraphicsContext2D();
-        int max = (int) (canvas.getHeight() / ITEM_HEIGHT) + 1;
-
-        timeline = new Timeline();
-        timeline.setCycleCount(Timeline.INDEFINITE);
-        KeyFrame keyFrame = new KeyFrame(
-            Duration.seconds(0.017), // 60 FPS
-            actionEvent -> {
-                int count = (itemList.size() > max) ? max : itemList.size();
-                for (int i = 0; i < count; i++) {
-                    drawItem(itemList.get(i), i);
-                }
-            }
-        );
-        timeline.getKeyFrames().add(keyFrame);
-        timeline.play();
-    }
-
-    public void stop() {
-        if (timeline != null) {
-            timeline.stop();
-            timeline = null;
+    public void draw(Graphics graphics, List<PacketHeader> packetList) {
+        int max = (height / ITEM_HEIGHT) + 1;
+        int count = (packetList.size() > max) ? max : packetList.size();
+        for (int i = 0; i < count; i++) {
+            drawItem(graphics, packetList.get(i), i);
         }
     }
 
-    private void drawItem(PacketHeader item, int position) {
-        PayloadProtocol proto = item.getProtocol();
+    private void drawItem(Graphics graphics, PacketHeader packet, int position) {
+        PayloadProtocol proto = packet.getProtocol();
         String protoString = "";
         String addrSrc, addrDst, portSrc, portDst;
-        int y = ITEM_HEIGHT * position;
+        int y = ITEM_HEIGHT * position + MainWindow.TOOLBAR_HEIGHT;
         
         if (position % 2 == 0) {
-            context.setFill(Color.WHITE);
+            graphics.setColor(Color.white);
         } else {
-            context.setFill(Color.rgb(242, 242, 242));
+            graphics.setColor(Color.decode("#f2f2f2"));
         }
-        context.fillRect(0, y, ITEM_WIDTH, ITEM_HEIGHT);
+        graphics.fillRect(0, y, ITEM_WIDTH, ITEM_HEIGHT);
 
         if (proto != null) {
             if (proto == PayloadProtocol.OTHER) {
-                protoString = "Other (" + item.getOtherProtocol() + ")";
+                protoString = "Other (" + packet.getOtherProtocol() + ")";
             } else {
                 protoString = proto.toString();
             }
-            context.setFill(item.getProtocol().getColor());
+            graphics.setColor(packet.getProtocol().getColor());
         } else {
-            context.setFill(Color.BLACK);
+            graphics.setColor(Color.black);
         }
 
-        addrSrc = item.getSrcIpAddress();
-        addrDst = item.getDstIpAddress();
-        if (item.getSrcPort() > 0 && item.getDstPort() > 0) {
-            portSrc = ":" + item.getSrcPort();
-            portDst = ":" + item.getDstPort();
+        addrSrc = packet.getSrcIpAddress();
+        addrDst = packet.getDstIpAddress();
+        if (packet.getSrcPort() > 0 && packet.getDstPort() > 0) {
+            portSrc = ":" + packet.getSrcPort();
+            portDst = ":" + packet.getDstPort();
         } else {
             portSrc = "";
             portDst = "";
         }
-        context.fillRect(0, y, 7, 50);
+        graphics.fillRect(0, y, 7, 50);
 
-        context.setFill(Color.BLACK);
-        if (item.isIpV6()) {
-            context.setFont(small);
+        graphics.setColor(Color.black);
+        int base = 0;
+        if (packet.isIpV6()) {
+            graphics.setFont(small);
         } else {
-            context.setFont(large);
+            graphics.setFont(large);
+            base = 6;
         }
-        context.fillText(addrSrc, 14, 26 + FONT_BASE +  y);
-        context.fillText(addrDst, 324, 26 + FONT_BASE + y);
+        graphics.drawString(addrSrc, 14, 26 - base + y);
+        graphics.drawString(addrDst, 324, 26 - base + y);
 
-        context.setFont(small);
-        context.fillText("->", 284, 24 + FONT_BASE + y);
-        context.fillText(protoString, 14, FONT_BASE + y);
-        context.fillText(portSrc, 14, 46 + FONT_BASE + y);
-        context.fillText(portDst, 324, 46 + FONT_BASE + y);
+        graphics.setFont(small);
+        graphics.drawString("->", 284, 24 + y);
+        graphics.drawString(protoString, 14, 4 + y);
+        graphics.drawString(portSrc, 14, 46 + y);
+        graphics.drawString(portDst, 324, 46 + y);
 
-        switch (item.getPacketType()) {
+        switch (packet.getPacketType()) {
             case SEND:
-                context.drawImage(txImg, 578, 6 + y, IMG_SIZE, IMG_SIZE);
+                txImg.draw(578, 6 + y);
                 break;
 
             case RECEIVE:
-                context.drawImage(rxImg, 578, 6 + y, IMG_SIZE, IMG_SIZE);
+                rxImg.draw(578, 6 + y);
                 break;
 
             default:
-                context.drawImage(noneImg, 578, 6 + y, IMG_SIZE, IMG_SIZE);
+                noneImg.draw(578, 6 + y);
                 break;
         }
     }

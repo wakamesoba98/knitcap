@@ -1,73 +1,68 @@
 package net.wakamesoba98.knitcap.view.canvas;
 
-import javafx.animation.KeyFrame;
-import javafx.animation.Timeline;
-import javafx.scene.canvas.Canvas;
-import javafx.scene.canvas.GraphicsContext;
-import javafx.scene.image.Image;
-import javafx.scene.paint.Color;
-import javafx.util.Duration;
 import net.wakamesoba98.knitcap.capture.NetworkDevice;
 import net.wakamesoba98.knitcap.capture.packet.PacketHeader;
+import net.wakamesoba98.knitcap.window.MainWindow;
+import org.newdawn.slick.*;
 
-import java.util.*;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class NetworkMap {
 
     private static final int QUEUE_MAX = 1000;
+    private static final int IMAGE_SIZE = 72;
     private static final String INTERNET = "INTERNET";
-    private static final int INTERNET_X = 250, INTERNET_Y = 20;
-    private static final int GATEWAY_X = 250, GATEWAY_Y = 250;
-    private static final int LINE_LENGTH = 230;
 
-    private GraphicsContext context;
-    private Timeline timeline;
-    private Queue<PacketCircle> packetQueue;
+    private int line, internetX, internetY, gatewayX, gatewayY;
+    private ConcurrentLinkedQueue<PacketCircle> packetQueue;
+    private ConcurrentHashMap<String, NetworkObject> objectMap;
+    private CopyOnWriteArrayList<NetworkLine> lineList;
     private List<String> localNetworkHostsList;
-    private Map<String, NetworkObject> objectMap;
-    private List<NetworkLine> lineList;
     private String gatewayIpAddress;
+    private SpriteSheet sheet;
+    private TrueTypeFont font;
+    private PacketHeader lastPacket;
 
-    public void start(Canvas canvas) {
-        stop();
-
-        packetQueue = new LinkedList<>();
-        objectMap = new HashMap<>();
+    public NetworkMap(int width, int height) throws SlickException {
+        packetQueue = new ConcurrentLinkedQueue<>();
+        objectMap = new ConcurrentHashMap<>();
         localNetworkHostsList = new LinkedList<>();
-        lineList = new LinkedList<>();
-        context = canvas.getGraphicsContext2D();
-
-        timeline = new Timeline();
-        timeline.setCycleCount(Timeline.INDEFINITE);
-        KeyFrame keyFrame = new KeyFrame(
-            Duration.seconds(0.017), // 60 FPS
-            actionEvent -> {
-                context.clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
-
-                for (NetworkLine line : lineList) {
-                    context.setStroke(Color.BLUE);
-                    context.strokeLine(line.getFromX(), line.getFromY(), line.getToX(), line.getToY());
-                }
-
-                threadSafeQueueControl(false, null);
-
-                context.setFill(Color.BLACK);
-                for (NetworkObject object : objectMap.values()) {
-                    context.drawImage(object.getImage(), object.getX(), object.getY(), object.getWidth(), object.getHeight());
-                }
-                for (NetworkObject object : objectMap.values()) {
-                    context.fillText(object.getName(), object.getX() + object.getWidth() - 20, object.getY());
-                }
-            }
-        );
-        timeline.getKeyFrames().add(keyFrame);
-        timeline.play();
+        lineList = new CopyOnWriteArrayList<>();
+        font = new TrueTypeFont(new java.awt.Font("Sans", java.awt.Font.PLAIN, 14), true);
+        sheet = new SpriteSheet("res/png/sprite_map.png", IMAGE_SIZE, IMAGE_SIZE);
+        setMetrics(width, height);
     }
 
-    public void stop() {
-        if (timeline != null) {
-            timeline.stop();
-            timeline = null;
+    public void draw(Graphics graphics) {
+        graphics.setColor(Color.blue);
+        graphics.setFont(font);
+
+        for (NetworkLine line : lineList) {
+            graphics.drawLine(line.getFromX(), line.getFromY(), line.getToX(), line.getToY());
+        }
+
+        Iterator<PacketCircle> iterator = packetQueue.iterator();
+        while (iterator.hasNext()) {
+            PacketCircle circle = iterator.next();
+            if (circle.isFinished()) {
+                iterator.remove();
+            } else {
+                circle.draw(graphics);
+            }
+        }
+
+        graphics.setColor(Color.black);
+
+        for (NetworkObject object : objectMap.values()) {
+            object.getImage().draw(object.getX(), object.getY());
+        }
+        for (NetworkObject object : objectMap.values()) {
+            graphics.drawString(object.getName(), object.getX() + object.getWidth(), object.getY());
         }
     }
 
@@ -83,57 +78,19 @@ public class NetworkMap {
     public void showGateway(String defaultGateway) {
         if (defaultGateway != null && !defaultGateway.equals("")) {
             gatewayIpAddress = defaultGateway;
-            objectMap.put(defaultGateway, new NetworkObject(new Image(getClass().getResource("/res/png/router.png").toExternalForm()), defaultGateway, GATEWAY_X, GATEWAY_Y));
+            objectMap.put(defaultGateway, new NetworkObject(sheet.getSubImage(2, 0), defaultGateway, gatewayX, gatewayY));
         }
         createNetworkLine();
     }
 
     public void showInternet() {
-        objectMap.put(INTERNET, new NetworkObject(new Image(getClass().getResource("/res/png/internet.png").toExternalForm()), INTERNET, INTERNET_X, INTERNET_Y));
+        objectMap.put(INTERNET, new NetworkObject(sheet.getSubImage(1, 0), INTERNET, internetX, internetY));
         createNetworkLine();
-    }
-
-    private void detectHostsInNetwork(String ipAddress) {
-        localNetworkHostsList.add(ipAddress);
-
-        NetworkObject host = new NetworkObject(new Image(getClass().getResource("/res/png/computer.png").toExternalForm()), ipAddress, GATEWAY_X, GATEWAY_Y + LINE_LENGTH);
-        objectMap.put(ipAddress, host);
-
-        int count = localNetworkHostsList.size() - 1;
-
-        if (count > 0) {
-            int i = 0;
-            for (String localNetworkHost : localNetworkHostsList) {
-                NetworkObject object = objectMap.get(localNetworkHost);
-
-                double rad = (1.0d + ((double) i / count)) * Math.PI;
-                int x = (int) (Math.cos(rad) * LINE_LENGTH + GATEWAY_X);
-                int y = (int) (Math.sin(rad) * -1 * LINE_LENGTH + GATEWAY_Y);
-
-                object.setX(x);
-                object.setY(y);
-
-                i++;
-            }
-        }
-
-        createNetworkLine();
-    }
-
-    private void createNetworkLine() {
-        lineList.clear();
-        if (objectMap.get(INTERNET) != null) {
-            lineList.add(new NetworkLine(objectMap.get(gatewayIpAddress), objectMap.get(INTERNET)));
-        }
-        if (objectMap.get(gatewayIpAddress) != null) {
-            for (String localNetworkHost : localNetworkHostsList) {
-                lineList.add(new NetworkLine(objectMap.get(gatewayIpAddress), objectMap.get(localNetworkHost)));
-            }
-        }
     }
 
     public void addPacket(PacketHeader header) {
-        if (packetQueue.size() < QUEUE_MAX) {
+        if (packetQueue.size() < QUEUE_MAX && !isSameHeader(header)) {
+            lastPacket = header;
             NetworkObject src, gateway, dst;
             src = objectMap.get(header.getSrcIpAddress());
             gateway = objectMap.get(gatewayIpAddress);
@@ -181,7 +138,7 @@ public class NetworkMap {
             }
             if (src != null && dst != null) {
                 PacketCircle circle = new PacketCircle(this, src, gateway, dst, header);
-                threadSafeQueueControl(true, circle);
+                packetQueue.offer(circle);
             }
         }
     }
@@ -195,24 +152,71 @@ public class NetworkMap {
                 NetworkObject gateway = objectMap.get(gatewayIpAddress);
                 NetworkObject dst = objectMap.get(address);
                 PacketCircle circle = new PacketCircle(this, gateway, gateway, dst, header);
-                threadSafeQueueControl(true, circle);
+                packetQueue.offer(circle);
             }
         }).start();
     }
 
-    private synchronized void threadSafeQueueControl(boolean offer, PacketCircle offerCircle) {
-        if (offer) {
-            packetQueue.offer(offerCircle);
-        } else {
-            Iterator<PacketCircle> iterator = packetQueue.iterator();
-            while (iterator.hasNext()) {
-                PacketCircle circle = iterator.next();
-                if (circle.isFinished()) {
-                    iterator.remove();
-                } else {
-                    circle.draw(context);
-                }
+    private void setMetrics(int width, int height) {
+        width  -= ListDraw.ITEM_WIDTH;
+        height -= MainWindow.TOOLBAR_HEIGHT;
+
+        int smaller = (width < height) ? width : height;
+        line = (smaller - 150) / 2;
+        gatewayX = width / 2 + ListDraw.ITEM_WIDTH - IMAGE_SIZE / 2;
+        gatewayY = height / 2 + MainWindow.TOOLBAR_HEIGHT - IMAGE_SIZE / 2;
+        internetX = gatewayX;
+        internetY = gatewayY - line;
+    }
+
+    private void detectHostsInNetwork(String ipAddress) {
+        localNetworkHostsList.add(ipAddress);
+
+        NetworkObject host = new NetworkObject(sheet.getSubImage(0, 0), ipAddress, gatewayX, gatewayY + line);
+        objectMap.put(ipAddress, host);
+
+        int count = localNetworkHostsList.size() - 1;
+
+        if (count > 0) {
+            int i = 0;
+            for (String localNetworkHost : localNetworkHostsList) {
+                NetworkObject object = objectMap.get(localNetworkHost);
+
+                double rad = (1.0d + ((double) i / count)) * Math.PI;
+                int x = (int) (Math.cos(rad) * line + gatewayX);
+                int y = (int) (Math.sin(rad) * -1 * line + gatewayY);
+
+                object.setX(x);
+                object.setY(y);
+
+                i++;
             }
+        }
+
+        createNetworkLine();
+    }
+
+    private void createNetworkLine() {
+        lineList.clear();
+        if (objectMap.get(INTERNET) != null) {
+            lineList.add(new NetworkLine(objectMap.get(gatewayIpAddress), objectMap.get(INTERNET)));
+        }
+        if (gatewayIpAddress != null && objectMap.get(gatewayIpAddress) != null) {
+            for (String localNetworkHost : localNetworkHostsList) {
+                lineList.add(new NetworkLine(objectMap.get(gatewayIpAddress), objectMap.get(localNetworkHost)));
+            }
+        }
+    }
+
+    private boolean isSameHeader(PacketHeader item) {
+        if (lastPacket != null) {
+            return lastPacket.getProtocol() == item.getProtocol()
+                    && lastPacket.getSrcIpAddress().equals(item.getSrcIpAddress())
+                    && lastPacket.getDstIpAddress().equals(item.getDstIpAddress())
+                    && lastPacket.getSrcPort() == item.getSrcPort()
+                    && lastPacket.getDstPort() == item.getDstPort();
+        } else {
+            return false;
         }
     }
 }

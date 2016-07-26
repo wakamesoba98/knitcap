@@ -9,7 +9,7 @@ public class NetworkDevice {
     private String ipV4SubnetMask = "", ipV6SubnetMask = "";
     private String hardwareAddress;
 
-    public NetworkDevice(String hardwareAddress, List<PcapAddress> addressList) {
+    NetworkDevice(String hardwareAddress, List<PcapAddress> addressList) {
         this.hardwareAddress = hardwareAddress;
         for (PcapAddress pcapAddress : addressList) {
             String address = pcapAddress.getAddress().getHostAddress();
@@ -24,7 +24,7 @@ public class NetworkDevice {
         }
     }
 
-    public NetworkDevice(String hardwareAddress, String address, String mask) {
+    NetworkDevice(String hardwareAddress, String address, String mask) {
         this.hardwareAddress = hardwareAddress;
         if (address.contains(":")) {
             this.ipV6Address = address;
