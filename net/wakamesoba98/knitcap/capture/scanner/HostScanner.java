@@ -1,8 +1,13 @@
 package net.wakamesoba98.knitcap.capture.scanner;
 
+import net.wakamesoba98.knitcap.capture.NetworkDevice;
+import net.wakamesoba98.knitcap.capture.util.IpV4Utils;
+import org.pcap4j.core.PcapHandle;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.List;
 
 public class HostScanner {
 
@@ -47,5 +52,15 @@ public class HostScanner {
             e.printStackTrace();
         }
         return "";
+    }
+
+    public void sendArpHostScan(PcapHandle handle, NetworkDevice device, int limit) {
+        IpV4Utils utils = new IpV4Utils();
+        List<String> addressList = utils.getAddressListV4(device.getIpV4Address(), device.getIpV4SubnetMask());
+        Arp arp = new Arp();
+        int count = (addressList.size() < limit) ? addressList.size() : limit;
+        for (int i = 0; i < count; i++) {
+            arp.send(handle, device, addressList.get(i));
+        }
     }
 }

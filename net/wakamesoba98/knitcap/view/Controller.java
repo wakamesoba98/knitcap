@@ -10,6 +10,7 @@ import org.newdawn.slick.SlickException;
 import org.pcap4j.core.NotOpenException;
 import org.pcap4j.core.PcapNativeException;
 
+import java.io.IOException;
 import java.util.LinkedList;
 
 public class Controller implements GuiControllable {
@@ -25,7 +26,7 @@ public class Controller implements GuiControllable {
         try {
             listDraw = new ListDraw(height);
             networkMap = new NetworkMap(width, height);
-        } catch (SlickException e) {
+        } catch (SlickException | IOException e) {
             e.printStackTrace();
         }
     }
