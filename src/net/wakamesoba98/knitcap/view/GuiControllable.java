@@ -7,6 +7,6 @@ public interface GuiControllable {
     void openedInterface(NetworkDevice device);
     void showGateway(String address);
     void showInternet();
-    void addHost(String address);
+    void refresh();
     void addItem(PacketHeader item);
 }

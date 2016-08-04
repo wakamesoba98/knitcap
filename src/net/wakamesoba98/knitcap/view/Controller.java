@@ -47,8 +47,8 @@ public class Controller implements GuiControllable {
     }
 
     @Override
-    public void addHost(String address) {
-
+    public void refresh() {
+        networkMap.refresh();
     }
 
     @Override

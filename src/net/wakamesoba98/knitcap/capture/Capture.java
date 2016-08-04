@@ -23,6 +23,7 @@ public class Capture {
     private NetworkDevice localhost, gateway;
     private GuiControllable guiControllable;
     private boolean isCapturing, isGatewayDetected, isPingReceived;
+    private int refreshCount = 0;
 
     public Capture(GuiControllable gui) {
         guiControllable = gui;
@@ -63,18 +64,38 @@ public class Capture {
             switch (header.getProtocol()) {
                 case ARP:
                     if (!isGatewayDetected) {
-                        receivedArpReply(gatewayAddress, header, networkIface);
+                        try {
+                            receivedArpReply(gatewayAddress, header, networkIface);
+                        } catch (PcapNativeException e) {
+                            e.printStackTrace();
+                        }
                     }
                     break;
 
                 case ICMPv4: case ICMPv6:
                     if (!isPingReceived) {
-                        receivedPingReply(header, networkIface);
+                        try {
+                            receivedPingReply(header, networkIface);
+                        } catch (PcapNativeException e) {
+                            e.printStackTrace();
+                        }
                     }
                     break;
             }
 
             guiControllable.addItem(header);
+
+            refreshCount++;
+            if (refreshCount > 10000) {
+                refreshCount = 0;
+                isGatewayDetected = false;
+                isPingReceived = false;
+                try {
+                    sendArp(networkIface, gatewayAddress);
+                } catch (PcapNativeException e) {
+                    e.printStackTrace();
+                }
+            }
         };
 
         pcapHandle = networkIface.openLive(SNAP_LENGTH, PcapNetworkInterface.PromiscuousMode.PROMISCUOUS, READ_TIME_OUT);
@@ -88,13 +109,7 @@ public class Capture {
             }
         }).start();
 
-
-        Arp arp = new Arp();
-        PcapHandle sendHandle = networkIface.openLive(SNAP_LENGTH, PcapNetworkInterface.PromiscuousMode.PROMISCUOUS, READ_TIME_OUT);
-        new Thread(() -> {
-            arp.send(sendHandle, localhost, gatewayAddress);
-            sendHandle.close();
-        }).start();
+        sendArp(networkIface, gatewayAddress);
     }
 
     public void destroy() {
@@ -110,7 +125,16 @@ public class Capture {
         }
     }
 
-    private void receivedArpReply(String gatewayAddress, PacketHeader header, PcapNetworkInterface networkIface) {
+    private void sendArp(PcapNetworkInterface networkIface, String gatewayAddress) throws PcapNativeException {
+        Arp arp = new Arp();
+        PcapHandle sendHandle = networkIface.openLive(SNAP_LENGTH, PcapNetworkInterface.PromiscuousMode.PROMISCUOUS, READ_TIME_OUT);
+        new Thread(() -> {
+            arp.send(sendHandle, localhost, gatewayAddress);
+            sendHandle.close();
+        }).start();
+    }
+
+    private void receivedArpReply(String gatewayAddress, PacketHeader header, PcapNetworkInterface networkIface) throws PcapNativeException {
         if (header.getPacketType() == PacketType.RECEIVE
             && header.getSrcIpAddress().equals(gatewayAddress)) {
 
@@ -121,35 +145,27 @@ public class Capture {
 
             guiControllable.showGateway(gateway.getIpV4Address());
             Ping ping = new Ping(localhost);
-            try {
-                PcapHandle sendHandle = networkIface.openLive(SNAP_LENGTH, PcapNetworkInterface.PromiscuousMode.PROMISCUOUS, READ_TIME_OUT);
-                new Thread(() -> {
-                    ping.send(sendHandle, gateway, PING_DST);
-                    sendHandle.close();
-                }).start();
-            } catch (PcapNativeException e) {
-                e.printStackTrace();
-            }
+            PcapHandle sendHandle = networkIface.openLive(SNAP_LENGTH, PcapNetworkInterface.PromiscuousMode.PROMISCUOUS, READ_TIME_OUT);
+            new Thread(() -> {
+                ping.send(sendHandle, gateway, PING_DST);
+                sendHandle.close();
+            }).start();
         }
     }
 
-    private void receivedPingReply(PacketHeader header, PcapNetworkInterface networkIface) {
+    private void receivedPingReply(PacketHeader header, PcapNetworkInterface networkIface) throws PcapNativeException {
         if (header.getPacketType() == PacketType.RECEIVE
             && header.getSrcIpAddress().equals(PING_DST)) {
 
             isPingReceived = true;
             guiControllable.showInternet();
 
-            try {
-                PcapHandle sendHandle = networkIface.openLive(SNAP_LENGTH, PcapNetworkInterface.PromiscuousMode.PROMISCUOUS, READ_TIME_OUT);
-                new Thread(() -> {
-                    HostScanner scanner = new HostScanner();
-                    scanner.sendArpHostScan(sendHandle, localhost, 255);
-                    sendHandle.close();
-                }).start();
-            } catch (PcapNativeException e) {
-                e.printStackTrace();
-            }
+            PcapHandle sendHandle = networkIface.openLive(SNAP_LENGTH, PcapNetworkInterface.PromiscuousMode.PROMISCUOUS, READ_TIME_OUT);
+            new Thread(() -> {
+                HostScanner scanner = new HostScanner();
+                scanner.sendArpHostScan(sendHandle, localhost, 255);
+                sendHandle.close();
+            }).start();
         }
     }
 }

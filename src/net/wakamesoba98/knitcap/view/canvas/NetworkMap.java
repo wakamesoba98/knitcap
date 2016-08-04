@@ -148,6 +148,12 @@ public class NetworkMap {
         }
     }
 
+    public void refresh() {
+        objectMap.clear();
+        lineList.clear();
+        localNetworkHostsList.clear();
+    }
+
     void sendBroadcast(PacketHeader header) {
         new Thread(() -> {
             for (String address : localNetworkHostsList) {
