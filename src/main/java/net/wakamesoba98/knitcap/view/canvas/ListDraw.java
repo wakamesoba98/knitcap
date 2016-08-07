@@ -10,8 +10,6 @@ import org.newdawn.slick.*;
 
 import java.awt.Font;
 import java.io.IOException;
-import java.nio.file.LinkOption;
-import java.nio.file.Paths;
 import java.util.List;
 
 public class ListDraw {
@@ -26,7 +24,7 @@ public class ListDraw {
     public ListDraw(int height) throws SlickException, IOException {
         small = new TrueTypeFont(new Font("Sans", Font.PLAIN, 14), true);
         large = new TrueTypeFont(new Font("Sans", Font.PLAIN, 22), true);
-        SpriteSheet sheet = new SpriteSheet(Paths.get("res/png/sprite_cell.png").toRealPath(LinkOption.NOFOLLOW_LINKS).toString(), 16, 16);
+        SpriteSheet sheet = new SpriteSheet("sprite_cell.png", getClass().getResourceAsStream("/sprite_cell.png"), 16, 16);
         txImg = sheet.getSprite(0, 0);
         rxImg = sheet.getSprite(1, 0);
         noneImg = sheet.getSprite(2, 0);

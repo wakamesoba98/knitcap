@@ -6,10 +6,9 @@ import net.wakamesoba98.knitcap.window.MainWindow;
 import org.newdawn.slick.*;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.LinkOption;
-import java.nio.file.Paths;
-import java.util.*;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -29,7 +28,6 @@ public class NetworkMap {
     private SpriteSheet sheet;
     private TrueTypeFont font;
     private PacketHeader lastPacket;
-    private Set<String> mobileOuis;
 
     public NetworkMap(int width, int height) throws SlickException, IOException {
         packetQueue = new ConcurrentLinkedQueue<>();
@@ -37,10 +35,8 @@ public class NetworkMap {
         localNetworkHostsList = new LinkedList<>();
         lineList = new CopyOnWriteArrayList<>();
         font = new TrueTypeFont(new java.awt.Font("Sans", java.awt.Font.PLAIN, 14), true);
-        sheet = new SpriteSheet(Paths.get("res/png/sprite_map.png").toRealPath(LinkOption.NOFOLLOW_LINKS).toString(), IMAGE_SIZE, IMAGE_SIZE);
+        sheet = new SpriteSheet("sprite_map.png", getClass().getResourceAsStream("/sprite_map.png"), IMAGE_SIZE, IMAGE_SIZE);
         setMetrics(width, height);
-        mobileOuis = new HashSet<>();
-        Files.lines(Paths.get("res/txt/mobile_oui.txt").toRealPath(LinkOption.NOFOLLOW_LINKS)).forEach(s -> mobileOuis.add(s));
     }
 
     public void draw(Graphics graphics) {
@@ -187,13 +183,7 @@ public class NetworkMap {
 
         localNetworkHostsList.add(ipAddress);
 
-        Image image;
-        String oui = hardwareAddress.replace(":", "").substring(0, 6);
-        if (mobileOuis.contains(oui)) {
-            image = sheet.getSubImage(3, 0);
-        } else {
-            image = sheet.getSubImage(0, 0);
-        }
+        Image image = sheet.getSubImage(0, 0);
         NetworkObject host = new NetworkObject(image, ipAddress, gatewayX, gatewayY + line);
         objectMap.put(ipAddress, host);
 

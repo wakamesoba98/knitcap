@@ -13,8 +13,6 @@ hs_err_pid*
 
 *.mmdb
 
-META-INF
-lib/
-out/
 *.iml
 .idea/
+target/

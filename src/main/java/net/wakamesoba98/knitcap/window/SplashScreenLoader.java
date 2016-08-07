@@ -16,7 +16,7 @@ public class SplashScreenLoader extends Preloader {
 
     @Override
     public void start(Stage primaryStage) throws Exception {
-        Image image = new Image(getClass().getResource("/res/png/splash.png").toExternalForm());
+        Image image = new Image(getClass().getResource("/splash.png").toExternalForm());
         int width = (int) image.getWidth();
         int height = (int) image.getHeight();
         ImageView imageView = new ImageView(image);
