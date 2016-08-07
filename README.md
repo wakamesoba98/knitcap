@@ -19,7 +19,7 @@ TCP/IP Packet Visualizer
 
 in Arch Linux:
 
-```
+```bash
 $ yaourt -S maven jdk libcap libpcap xorg-xrandr
 ```
 
@@ -27,23 +27,23 @@ $ yaourt -S maven jdk libcap libpcap xorg-xrandr
 
 For non-root user to run Knitcap, set capability to your Java binary.
 
-```
+```bash
 $ sudo setcap cap_net_raw,cap_net_admin=eip $(readlink $(which java))
 ```
 
 # Run
 
-```
-mvn nativedependencies:copy
-mvn clean compile assembly:single
-mvn exec:exec
+```bash
+$ mvn nativedependencies:copy
+$ mvn clean compile assembly:single
+$ mvn exec:exec
 ```
 
 # Run Standalone JAR
 
-```
-cd target
-java -Djava.library.path=natives -jar Knitcap-0.1-SNAPSHOT-jar-with-dependencies.jar
+```bash
+$ cd target
+$ java -Djava.library.path=natives -jar Knitcap-0.1-SNAPSHOT-jar-with-dependencies.jar
 ```
 
 # License
