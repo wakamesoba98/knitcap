@@ -7,7 +7,7 @@ TCP/IP Packet Visualizer
 
 # Setup
 
-## Required library
+## Requirements
 
 * Maven (`mvn` command)
 * Java 8 Update 40 (8u40)
@@ -49,3 +49,13 @@ $ java -Djava.library.path=natives -jar Knitcap-0.1-SNAPSHOT-jar-with-dependenci
 # License
 
 The MIT License (MIT)
+
+## Libraries
+
+[Pcap4J](https://github.com/kaitoy/pcap4j) is distributed under the MIT license.
+
+[Slick2D](http://slick.ninjacave.com/) is distributed under the libral BSD License.
+
+## Icons
+
+[Google Material design icons](https://github.com/google/material-design-icons/) is licensed under the [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/).
